@@ -72,17 +72,19 @@
 
       <button type="submit">Log</button>
     </form>
+<p id="totalDuration" style="font-weight: bold; margin-top: 20px;">Total Duration: 0h 0m</p>
 
-    <table id="logTable">
-      <thead>
-        <tr>
-          <th>Start</th>
-          <th>End</th>
-          <th>Activity</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+<table id="logTable">
+  <thead>
+    <tr>
+      <th>Start</th>
+      <th>End</th>
+      <th>Duration</th>
+      <th>Activity</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
   </div>
 
   <script>
@@ -111,16 +113,39 @@
       logs.push(log);
       localStorage.setItem('timeLogs', JSON.stringify(logs));
     }
+function calculateDuration(start, end) {
+  const startTime = new Date(start);
+  const endTime = new Date(end);
+  const diffMs = endTime - startTime;
+  const minutes = Math.floor(diffMs / 60000);
+  return {
+    rawMinutes: minutes,
+    formatted: `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+  };
+}
 
-    function loadLogs() {
-      tableBody.innerHTML = '';
-      const logs = JSON.parse(localStorage.getItem('timeLogs') || '[]');
-      logs.forEach(log => {
-        const row = document.createElement('tr');
-        row.innerHTML = `<td>${log.start}</td><td>${log.end}</td><td>${log.activity}</td>`;
-        tableBody.appendChild(row);
-      });
-    }
+function loadLogs() {
+  tableBody.innerHTML = '';
+  const logs = JSON.parse(localStorage.getItem('timeLogs') || '[]');
+  let totalMinutes = 0;
+
+  logs.forEach(log => {
+    const duration = calculateDuration(log.start, log.end);
+    totalMinutes += duration.rawMinutes;
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${log.start}</td>
+      <td>${log.end}</td>
+      <td>${duration.formatted}</td>
+      <td>${log.activity}</td>
+    `;
+    tableBody.appendChild(row);
+  });
+
+  const totalDurationEl = document.getElementById('totalDuration');
+  totalDurationEl.textContent = `Total Duration: ${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;
+}
 
     form.addEventListener('submit', function(e) {
       e.preventDefault();

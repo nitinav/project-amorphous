@@ -1,15 +1,170 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>My Mobile Site</title>
+  <title>Time Logger</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    h1 { color: #2c3e50; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 1rem;
+      background-color: #f4f4f4;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+
+    input[type="text"], input[type="time"], textarea {
+      width: 100%;
+      padding: 0.6rem;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.8rem;
+      font-size: 1rem;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 2rem;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 0.6rem;
+      border: 1px solid #ccc;
+    }
+
+    @media (min-width: 600px) {
+      input, textarea, button {
+        font-size: 1.1rem;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Hello from my phone!</h1>
-  <p>This is a simple mobile-friendly page hosted on GitHub Pages.</p>
+
+  <h1>Time Logger</h1>
+
+  <div class="form-group">
+    <label for="startTime">Start Time</label>
+    <input type="text" id="startTime" readonly>
+  </div>
+
+  <div class="form-group">
+    <label for="endTime">End Time</label>
+    <input type="text" id="endTime" readonly>
+  </div>
+
+  <div class="form-group">
+    <label for="activity">Activity</label>
+    <textarea id="activity" rows="3" placeholder="Describe your activity..."></textarea>
+  </div>
+
+  <button onclick="logTime()">Log</button>
+
+  <table id="logsTable">
+    <thead>
+      <tr>
+        <th>Start</th>
+        <th>End</th>
+        <th>Activity</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+
+  <script>
+    let db;
+
+    // Initialize start time
+    const startTimeField = document.getElementById('startTime');
+    const endTimeField = document.getElementById('endTime');
+    const now = new Date();
+    startTimeField.value = now.toLocaleString();
+
+    // Update end time every second
+    setInterval(() => {
+      endTimeField.value = new Date().toLocaleString();
+    }, 1000);
+
+    // IndexedDB setup
+    const request = indexedDB.open("TimeLoggerDB", 1);
+    request.onerror = () => alert("Failed to open DB");
+
+    request.onupgradeneeded = function (event) {
+      const db = event.target.result;
+      const objectStore = db.createObjectStore("logs", { keyPath: "id", autoIncrement: true });
+      objectStore.createIndex("start", "start", { unique: false });
+    };
+
+    request.onsuccess = function (event) {
+      db = event.target.result;
+      loadLogs();
+    };
+
+    function logTime() {
+      const activity = document.getElementById('activity').value.trim();
+      if (!activity) return alert("Please enter an activity.");
+
+      const entry = {
+        start: startTimeField.value,
+        end: endTimeField.value,
+        activity
+      };
+
+      const tx = db.transaction(["logs"], "readwrite");
+      const store = tx.objectStore("logs");
+      store.add(entry);
+
+      tx.oncomplete = () => {
+        document.getElementById('activity').value = "";
+        loadLogs();
+      };
+    }
+
+    function loadLogs() {
+      const tbody = document.querySelector("#logsTable tbody");
+      tbody.innerHTML = "";
+
+      const tx = db.transaction(["logs"], "readonly");
+      const store = tx.objectStore("logs");
+
+      store.openCursor().onsuccess = function (event) {
+        const cursor = event.target.result;
+        if (cursor) {
+          const log = cursor.value;
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${log.start}</td>
+            <td>${log.end}</td>
+            <td>${log.activity}</td>
+          `;
+          tbody.appendChild(row);
+          cursor.continue();
+        }
+      };
+    }
+  </script>
+
 </body>
 </html>
